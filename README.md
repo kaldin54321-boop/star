@@ -10,23 +10,25 @@
 
 # Our official social media
 
-<p align="center">
-  <a href="https://discord.gg/Q74CNHJnq2">
+👉Discord server: <a href="https://discord.gg/Q74CNHJnq2">
     <img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" height="40">
-  </a>
-  <a href="https://t.me/staremul">
+    </a>
+    
+👉Telegram group: <a href="https://t.me/staremul">
     <img src="https://img.shields.io/badge/Telegram-Join-26A5E4?logo=telegram&logoColor=white" height="40">
   </a>
-  <a href="https://youtube.com/@starwindowsemulator?si=sHoTf-auUpccqR6s">
+  
+👇YouTube channel: <a href="https://youtube.com/@starwindowsemulator?si=sHoTf-auUpccqR6s">
     <img src="https://img.shields.io/badge/YouTube-Subscribe-FF0000?logo=youtube&logoColor=white" height="40">
   </a>
-  <a href="https://www.instagram.com/star_windows_emulator_official?igsh=ZDdyOXB2OWlqZHR3">
+  
+👇Instagram account: <a href="https://www.instagram.com/star_windows_emulator_official?igsh=ZDdyOXB2OWlqZHR3">
     <img src="https://img.shields.io/badge/Instagram-Follow-E4405F?logo=instagram&logoColor=white" height="40">
   </a>
-  <a href="https://www.tiktok.com/@star_windows_emulator?_r=1&_t=ZS-92kj1bfBb8s">
+  
+👉TikTok account: <a href="https://www.tiktok.com/@star_windows_emulator?_r=1&_t=ZS-92kj1bfBb8s">
     <img src="https://img.shields.io/badge/TikTok-Follow-000000?logo=tiktok&logoColor=white" height="40">
   </a>
-</p>
 
 # Installation
 
