@@ -22,13 +22,6 @@
     <img src="https://img.shields.io/badge/YouTube-Subscribe-FF0000?logo=youtube&logoColor=white" height="40">
   </a>
   
-👉Instagram account: <a href="https://www.instagram.com/star_windows_emulator_official?igsh=ZDdyOXB2OWlqZHR3">
-    <img src="https://img.shields.io/badge/Instagram-Follow-E4405F?logo=instagram&logoColor=white" height="40">
-  </a>
-  
-👉TikTok account: <a href="https://www.tiktok.com/@star_windows_emulator?_r=1&_t=ZS-92kj1bfBb8s">
-    <img src="https://img.shields.io/badge/TikTok-Follow-000000?logo=tiktok&logoColor=white" height="40">
-  </a>
 
 # Installation
 
