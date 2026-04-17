@@ -6,7 +6,7 @@
 </p>
 
 # star
-**star** is the successor to the famous Winlator fork "Winlator@Frost". It aims to run Windows application using box64 and Wine.
+**star** is an application which uses Winlator for its base that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
 # Our official social media
 
