@@ -5,7 +5,9 @@
   <img src="https://img.shields.io/github/downloads/jacojayy/star/total" alt="Total Downloads" width="150">
 </p>
 
-# star
+<h1 align="center"> star -
+Windows applications and games on Android.</h1>
+
 **star** is an application which uses Winlator for its base that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
 # Our official social media
