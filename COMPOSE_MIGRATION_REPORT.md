@@ -3,9 +3,10 @@
 **Repo:** https://github.com/The412Banner/star-compose  
 **Branch:** `main`  
 **Final migration commit:** `6537038`  
-**Latest commit:** `546d25e`  
+**Latest commit (Part D era):** `546d25e`  
+**Latest commit (Part E refresh):** see `git log` on `beta-4`  
 **Date:** 2026-04-16  
-**Last updated:** 2026-04-17
+**Last updated:** 2026-05-06 — Part E appended (post-2026-04-22 status refresh)
 
 ---
 
@@ -46,6 +47,18 @@
 - [D1. Fix Summary Table](#d1-fix-summary-table)
 - [D2–D9. Per-Job Detail](#d2-job-detail-help--support)
 - [D10. New Gotchas (13–18)](#d10-new-gotchas-discovered-during-feedback-fixes)
+
+**Part E — Post-2026-04-22 Status (refresh)**
+- [E1. New milestones since Part D](#e1-new-milestones-since-part-d)
+- [E2. Releases shipped from this work](#e2-releases-shipped-from-this-work)
+- [E3. New Compose dialogs/overlays added](#e3-new-compose-dialogsoverlays-added-part-b2-supplement)
+- [E4. Bridging pattern: in-game drawer](#e4-bridging-pattern-in-game-drawer)
+- [E5. Pending cleanup (Java dead code from in-game migration)](#e5-pending-cleanup-java-dead-code-from-in-game-migration)
+- [E6. New gotchas (G19)](#e6-new-gotchas-g19)
+- [E7. Updated summary stats (supersedes B7)](#e7-updated-summary-stats-supersedes-b7)
+- [E8. Still active — needs migration](#e8-still-active--needs-migration-supersedes-ui_migration_reportmd-2)
+- [E9. Still active — Java config-helper dialogs (deferred deletion)](#e9-still-active--java-config-helper-dialogs-deferred-deletion)
+- [E10. What this report does NOT cover](#e10-what-this-report-does-not-cover)
 
 ---
 
@@ -1806,3 +1819,145 @@ Composables promoted to `internal` visibility so they can be shared across scree
 | Total lines of Java/XML removed | ~5,000+ |
 | Post-migration feedback fix commits | 8 jobs → 9 commits |
 | New gotchas documented (Part D) | 6 (Gotchas 13–18) |
+
+---
+
+## Part E — Post-2026-04-22 Status (refresh)
+
+**Refresh date:** 2026-05-06
+**Coverage:** What changed between Part D (2026-04-17) and 2026-05-06. The narrative in Parts A–D still applies; this part records new milestones, new bug fixes, and updated stats.
+
+### E1. New milestones since Part D
+
+| Date | Commit | Milestone |
+|---|---|---|
+| 2026-04-22 | `d1be7af` | Fancy splash screen with sparkle canvas + theme accent colors |
+| 2026-04-22 | `f79f1ef` | **In-game side drawer migrated to Jetpack Compose** (`XServerDrawer.kt` + `XServerDrawerState`); replaces the legacy `NavigationView` in `XServerDisplayActivity` |
+| 2026-04-22 | `e68dea0` | **All in-game dialogs and overlays migrated to Jetpack Compose** — `ActiveWindowsDialog.kt`, `DebugDialogContent.kt`, `ScreenEffectsDialog.kt`, `TaskManagerDialog.kt`, `VibrationDialog.kt`, `InputControlsDialog.kt`, `FSROverlay.kt`, `MagnifierOverlay.kt` |
+| 2026-04-22 | `802a36f` | Overlays hosted as proper `Dialog` windows; screen-effects width + task-manager scroll fixes |
+| 2026-04-22 | `9289d57` | `@JvmField + Runnable` pattern for Java→Kotlin callback bridging (XServerDrawerState callbacks) |
+| 2026-04-23 | `289609d` | VKD3D content-profile extraction fixes (identifier format + cache gate) — landed before Beta 2 |
+| 2026-04-23/24 | `76c6628` `a1017f6` | Controller APK-parity fixes (softRelease, releaseSlot, event pre-creation, PlugPlay revert) |
+| 2026-05-06 | `c48043f` | **Controller support root cause fixed** — Compose splash-install path now creates the `libSDL2-2.0.so.0` SoName symlink that the legacy `installFromAssets()` path created. `LATEST_VERSION` 21→22 forces re-extract for existing users (Wine prefixes survive). Shipped in **Beta 3** |
+| 2026-05-06 | `1330bb4` | **Box64 dropdown stale-display bug fixed** — `ContainerDetailViewModel.loadContainerData()` now seeds `selectedBox64Version` from the saved container value after `refreshWineDependent()` resets the list. Cosmetic-only bug; runtime was always correct (DXVK HUD verified). On `beta-4` |
+
+### E2. Releases shipped from this work
+
+| Tag | Name | Date | Built from |
+|---|---|---|---|
+| `v7.1.4x-cmod-20260423-ec08c09` | Winlator Star Bionic Compose Beta 2 | 2026-04-23 | VKD3D fixes + in-game Compose dialogs/overlays + drawer |
+| `v7.1.4x-cmod-20260506-7adfaf1` | **Winlator Star Bionic Compose Beta 3** | 2026-05-06 | Beta 2 + controller support fully restored (4 fixes) |
+
+### E3. New Compose dialogs/overlays added (Part B2 supplement)
+
+| Replaced Java/XML | New Compose | Trigger |
+|---|---|---|
+| `contentdialog/ActiveWindowsDialog.java` + `active_windows_dialog.xml` | `ui/dialogs/ActiveWindowsDialog.kt` | In-game window list button |
+| `contentdialog/DebugDialog.java` + `debug_dialog.xml` | `ui/dialogs/DebugDialogContent.kt` | In-game debug log overlay (state in `XServerDialogState`) |
+| `contentdialog/ScreenEffectDialog.java` + `screen_effect_dialog.xml` | `ui/dialogs/ScreenEffectsDialog.kt` | In-game screen effects button |
+| `contentdialog/FSRControlFloatingDialog.java` + `fsr_control_dialog.xml` | `ui/overlays/FSROverlay.kt` | In-game FSR floating overlay |
+| `widget/MagnifierView.java` + `magnifier_view.xml` | `ui/overlays/MagnifierOverlay.kt` | In-game magnifier overlay |
+| `winhandler/TaskManagerDialog.java` + `task_manager_dialog.xml` + `process_info_list_item.xml` | `ui/dialogs/TaskManagerDialog.kt` | In-game task manager |
+| (new) | `ui/dialogs/VibrationDialog.kt` | In-game vibration settings |
+| (new) | `ui/dialogs/InputControlsDialog.kt` | In-game input-controls dialog |
+
+> **Important:** the Java originals listed above STILL EXIST in the tree as of 2026-05-06. They are dead code (zero references except `DebugDialog` which is still called from `widget/LogView.java`), pending the cleanup in §E5.
+
+### E4. Bridging pattern: in-game drawer
+
+`XServerDisplayActivity` is intentionally still a Java `Activity` (engine-adjacent — see A15). To host the new Compose drawer it uses a hybrid approach:
+
+```kotlin
+// ui/XServerDrawer.kt
+fun setupComposeView(view: ComposeView) {
+    view.setContent { WinlatorTheme { XServerDrawer() } }
+}
+```
+
+Java side calls into a singleton `XServerDrawerState` object that exposes `StateFlow`-backed booleans (paused, mouse modes, log/magnifier visibility) and `Runnable` callbacks for menu actions. Java mutates the StateFlows via setters; Compose observes them via `collectAsState`. This avoids rewriting the activity while still giving the drawer a fully Compose surface.
+
+This is the same `@JvmField + Runnable` callback bridging pattern documented in commit `9289d57`. New gotcha (G19, see §E6) covers it.
+
+### E5. Pending cleanup (Java dead code from in-game migration)
+
+Six Java files have Compose replacements but were not deleted. Five have zero references and can be removed immediately. The sixth has a single Java caller blocking deletion.
+
+| File | Refs | Status | Action |
+|---|---|---|---|
+| `contentdialog/ActiveWindowsDialog.java` | 0 | Dead | Delete |
+| `contentdialog/ScreenEffectDialog.java` | 0 | Dead | Delete |
+| `contentdialog/FSRControlFloatingDialog.java` | 0 | Dead | Delete |
+| `widget/MagnifierView.java` | 0 | Dead | Delete |
+| `winhandler/TaskManagerDialog.java` | 0 | Dead | Delete |
+| `contentdialog/DebugDialog.java` | 1 | Blocked | First fix `widget/LogView.java` lines 230, 237, 245 — replace `DebugDialog.setPaused(x)` calls with `XServerDialogState.INSTANCE.setLogPaused(x)` (the Compose state holder already exposes this). Then delete. |
+
+After deletion, the corresponding XML layouts (`active_windows_dialog.xml`, `active_window_item.xml`, `debug_dialog.xml`, `debug_toolbar.xml`, `fsr_control_dialog.xml`, `magnifier_view.xml`, `screen_effect_dialog.xml`, `task_manager_dialog.xml`, `process_info_list_item.xml`) can also be removed.
+
+This cleanup did not block Beta 2 or Beta 3 because Java-class presence with zero references costs only APK size, not runtime correctness.
+
+### E6. New gotchas (G19)
+
+**G19. Hybrid Java-Activity ↔ Compose-drawer bridging via singleton StateFlow + Runnable callbacks**
+
+When you have a Java `Activity` you don't want to rewrite (XServerDisplayActivity is the engine boundary), but you do want the drawer/dialogs inside it to be Compose, the working pattern is:
+
+1. Define a Kotlin `object` (singleton) state holder — e.g. `XServerDrawerState`.
+2. Use `MutableStateFlow<Boolean>` (or whatever type) for each piece of observable state. Mark them `@JvmField` so Java can read/write directly.
+3. Use `Runnable?` for callbacks the drawer triggers — Java sets these in `onCreate`. `Runnable` works for both languages without coercion shims.
+4. In the Compose composable, use `state.value.collectAsState()` to bind StateFlows to recomposition.
+5. In the Java activity, use a `ComposeView` and call a top-level Kotlin `setupComposeView(view)` helper that calls `setContent { ... }`.
+
+Pitfalls: if you use `() -> Unit` instead of `Runnable`, Java needs a `kotlin.jvm.functions.Function0` shim that's noisy at the call site. Stick to `Runnable`. Also: never mutate StateFlow from a non-main-thread context without `withContext(Dispatchers.Main)` — Compose recomposition assumes main thread.
+
+### E7. Updated summary stats (supersedes B7)
+
+| Metric | Part B7 (2026-04-17) | Now (2026-05-06) | Delta |
+|---|---|---|---|
+| Java Fragments deleted | 7 | 7 | — |
+| Fragment XML layouts deleted | 8 | 8 | — |
+| Java Dialog classes deleted | 11 | 11 (15 Compose-replaced but 4 awaiting cleanup; see §E5) | net 0 |
+| Dialog XML layouts deleted | 15 | 15 (more pending §E5) | — |
+| Other Java/utility files deleted | 14 | 14 | — |
+| New Kotlin Compose screens | 10 | 10 (incl. `AppearanceScreen`, `SavesScreen` already in count) | — |
+| New Kotlin Compose **in-game dialogs/overlays** | n/a | **8** (ActiveWindows, Debug, ScreenEffects, TaskManager, Vibration, InputControls, FSR overlay, Magnifier overlay) | +8 |
+| New Kotlin Compose **in-game drawer** | n/a | **1** (`XServerDrawer.kt` + `XServerDrawerState`) | +1 |
+| New Kotlin ViewModels | 6 | 6 | — |
+| Internal reusable composables | 8 | 8 | — |
+| XML layouts remaining in `res/layout/` | ~81 | **73** | −8 (in-game dialog layouts swapped for Compose, pending cleanup of the actual files) |
+| Post-Part-D bug-fix commits | n/a | ~12 | +12 |
+| New gotchas | 18 (Parts A11+D10) | **19** (adds G19, §E6) | +1 |
+| Releases shipped | 0 | 2 (Beta 2 + Beta 3) | +2 |
+
+### E8. Still active — needs migration (supersedes UI_MIGRATION_REPORT.md §2)
+
+| File | Status as of 2026-05-06 | Notes |
+|---|---|---|
+| `SettingsFragment.java` + `settings_fragment.xml` | Active, hosted via `FragmentScreen` | Dark mode mismatch with Compose theme still partially mitigated (Job 4 listener); full Compose migration estimated 2h |
+| `InputControlsFragment.java` | Active, hosted via `FragmentScreen` | Complex custom view hierarchy; intentionally kept |
+| `ShortcutPickerActivity.java` | Active | Standalone Activity for home-screen shortcut picker; ~1h to convert to Compose Dialog or BottomSheet |
+| `BigPictureActivity.java` | Active | Standalone TV-style launcher; not part of main UI flow; deferred |
+| `ControlsEditorActivity.java` | Active | Visual input-bindings editor; complex custom canvas; intentionally kept |
+| `restore/RestoreActivity.java` | Active | Backup-restore flow Activity; ~1h to convert |
+| `saves/CustomFilePickerActivity.java` | Active | File-picker variant; ~30m to convert or replace with `ActivityResultContracts.OpenDocumentTree` |
+| `store/*` (Amazon/Epic/GOG/Steam main+detail+login activities) | Active, View-based Kotlin (not Compose) | Largest remaining surface; deferred to a separate epic |
+| `XServerDisplayActivity.java` | Active, intentionally kept | Engine boundary — see A15 |
+| `XrActivity.java` | Active, intentionally kept | XR/VR engine boundary |
+
+### E9. Still active — Java config-helper dialogs (deferred deletion)
+
+These dialogs are referenced by Compose code as static-helper holders only. Their UI was already replaced (see B2) but the static utility methods inside them are still called. Each one needs its statics moved into a Kotlin object before deletion.
+
+| File | Static methods still in use |
+|---|---|
+| `contentdialog/ContentDialog.java` | `confirm()`, `prompt()`, `alert()` — base helpers (12 references) |
+| `contentdialog/DXVKConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadDxvkVersionList()`, `compareVersion()` (4 refs) |
+| `contentdialog/GraphicsDriverConfigDialog.java` | `parseGraphicsDriverConfig()`, `toGraphicsDriverConfig()`, `getVersion()` (6 refs) |
+| `contentdialog/WineD3DConfigDialog.java` | `parseConfig()`, `setEnvVars()`, `loadGpuNames()` (5 refs) |
+
+These are **not** UI-migration blockers; they're a separate Kotlin-conversion follow-up.
+
+### E10. What this report does NOT cover
+
+- The store activities (Amazon/Epic/GOG/Steam) — explicitly out of scope for the UI Compose migration. They have separate planning docs in BannerHub/star-compose history.
+- Engine-internal changes (Wine, Box64/FEX, JNI) — by policy, never touched (A15).
+- The `beta-4` integration branch process — see the project's release/branching workflow (lives outside this doc).
