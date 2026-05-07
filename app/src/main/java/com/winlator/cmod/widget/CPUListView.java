@@ -65,7 +65,6 @@ public class CPUListView extends LinearLayout {
             return ColorStateList.valueOf(0xFFBA86FC);
         }
     }
-}
 
     public void setCheckedCPUList(String checkedCPUList) {
         this.checkedCPUList = Arrays.asList(checkedCPUList.split(","));
