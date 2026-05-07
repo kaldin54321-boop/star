@@ -1,6 +1,14 @@
-# Star Bionic (Compose)
+<img src="20260418_134945.png" width="1500" height="500" alt="star" />  
+</p>
 
-Jetpack Compose UI fork of the **Star Bionic** Winlator line. Runs Windows games and applications on Android by combining Wine, Box86/Box64, and the Adreno-tuned Turnip Vulkan driver. This fork's distinguishing work is the full migration of the legacy Java/XML UI to Jetpack Compose with Material 3.
+<p align="center">
+  <img src="https://img.shields.io/github/downloads/jacojayy/star/total" alt="Total Downloads" width="150">
+</p>
+
+<h1 align="center"> star -
+Windows applications and games on Android.</h1>
+
+**star** is an application that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
 - **Package:** `com.winlator.cmod`
 - **Version:** `v1.2-REVAMPED` (build identifier `7.1.4x-cmod`, versionCode `20`)
@@ -30,16 +38,6 @@ This project is built via **GitHub Actions only**. Local builds are not supporte
 - **Releases (main only):** trigger the `Manual Release Build` workflow.
 
 Artifacts are published as workflow artifacts; tagged stable builds are also published as GitHub Releases.
-
----
-
-## Branch model
-
-- `main` — last shipped stable.
-- `beta-N` — current integration branch where features land.
-- `feature/*`, `fix/*`, `docs/*` — short-lived branches that merge into `beta-N`.
-
-Features only reach `main` when the active `beta-N` is declared ready.
 
 ---
 
