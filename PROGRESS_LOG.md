@@ -1,5 +1,22 @@
 # Star-Compose — Progress Log
 
+## 2026-05-07 — Container Settings tab-switch state-loss fix (`fix/envvars-tab-switch-loss`)
+
+**Branch:** `fix/envvars-tab-switch-loss` off `beta4`
+
+**Bug reported by user:** In Container Settings, after adding Environment Variables, switching to the Drives tab loses all the edits. They only persist if OK is clicked while still on the Env Vars tab.
+
+**Root cause:** `EnvVarsTab` and `AdvancedTab` (CPU pin lists) use legacy Java widgets (`EnvVarsView`, `CPUListView`) hosted via `AndroidView`. The widget's internal state is the source of truth, with the parent screen reading it on save through a `MutableState<View?>` ref. When the user leaves the tab, the Composable disposes, the AndroidView destroys the underlying Java widget, and the user's unsaved input dies with it. The save path's fallback (`viewModel.envVarsStr`) is stale because nothing ever writes to it during editing.
+
+**Fix:** Add a `DisposableEffect(Unit)` to both `EnvVarsTab` and `AdvancedTab` that, on dispose, reads the current widget value through the ref and writes it back to the corresponding `var` on `ContainerDetailViewModel` (`envVarsStr`, `cpuList`, `cpuListWoW64`). The `var ... by mutableStateOf(...)` setters cause the next composition to seed the widget from the latest value, so a round-trip Drives → Env Vars now shows the user's edits intact.
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/screens/ContainerDetailScreen.kt` — added two `DisposableEffect` blocks (lines ~470, ~610)
+
+**Long-term:** Replace `EnvVarsView` and `CPUListView` legacy widgets with native Compose components that two-way-bind the ViewModel directly (same pattern as `DrivesTab` already uses). Tracked under `project_star_compose_ui_cleanup.md` Java/XML→Compose migration.
+
+---
+
 **Repo:** https://github.com/The412Banner/star-compose (main branch)  
 **Mirror:** https://github.com/kalteatz24/winlator-test (star-compose branch)  
 **Local:** `/data/data/com.termux/files/home/winlator-test`  

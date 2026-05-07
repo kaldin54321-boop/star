@@ -465,6 +465,14 @@ private fun EnvVarsTab(
     envVarsViewRef: MutableState<EnvVarsView?>
 ) {
     var showAddEnvVar by remember { mutableStateOf(false) }
+    // Flush the legacy EnvVarsView's contents back to the ViewModel before the
+    // tab leaves composition, so a tab switch doesn't drop in-progress edits.
+    DisposableEffect(Unit) {
+        onDispose {
+            envVarsViewRef.value?.let { viewModel.envVarsStr = it.envVars }
+            envVarsViewRef.value = null
+        }
+    }
     Column {
         AndroidView(
             factory = { ctx ->
@@ -597,6 +605,16 @@ private fun AdvancedTab(
     cpuListWoW64Ref: MutableState<CPUListView?>
 ) {
     val context = LocalContext.current
+    // Flush legacy CPUListView selections back to the ViewModel before the tab
+    // leaves composition, so a tab switch doesn't drop in-progress edits.
+    DisposableEffect(Unit) {
+        onDispose {
+            cpuListViewRef.value?.let { viewModel.cpuList = it.checkedCPUListAsString }
+            cpuListWoW64Ref.value?.let { viewModel.cpuListWoW64 = it.checkedCPUListAsString }
+            cpuListViewRef.value = null
+            cpuListWoW64Ref.value = null
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
         // Box64 section
