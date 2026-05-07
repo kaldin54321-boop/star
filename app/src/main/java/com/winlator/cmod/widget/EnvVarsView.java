@@ -153,11 +153,18 @@ public class EnvVarsView extends FrameLayout {
         }
     }
 
-    /** Tint the active state of legacy ToggleButton/CheckBox-style widgets to
-     *  match the runtime accent color from Compose's Appearance picker. The
-     *  toggle_button_selector drawable still controls shape; this only re-colors
-     *  the on-state via a background tint. Defensive fallback if AppThemeState
-     *  has not been initialised. */
+    /** Tint the active state of legacy ToggleButton-style widgets to match the
+     *  runtime accent color from Compose's Appearance picker. The
+     *  toggle_button_on/off PNG assets contain a track + a knob; a flat
+     *  setBackgroundTintList in SRC_IN mode would erase that internal contrast
+     *  and leave the toggle looking like an undifferentiated solid pill.
+     *
+     *  Solution: state-aware ColorStateList (so OFF passes through with white
+     *  multiplier, leaving the original gray PNG untouched) plus MULTIPLY
+     *  blend mode (so the ON tint shifts toward the accent while preserving
+     *  the track/knob brightness difference baked into the PNG).
+     *
+     *  Defensive fallback if AppThemeState has not been initialised. */
     private void applyAccentTint(View view) {
         int argb;
         try {
@@ -165,7 +172,13 @@ public class EnvVarsView extends FrameLayout {
         } catch (Throwable ignored) {
             argb = 0xFFBA86FC;
         }
-        view.setBackgroundTintList(ColorStateList.valueOf(argb));
+        int[][] states = {
+            { -android.R.attr.state_checked },
+            {  android.R.attr.state_checked },
+        };
+        int[] colors = { 0xFFFFFFFF, argb };
+        view.setBackgroundTintList(new ColorStateList(states, colors));
+        view.setBackgroundTintMode(android.graphics.PorterDuff.Mode.MULTIPLY);
     }
 
     // Method to get environment variables as a string
