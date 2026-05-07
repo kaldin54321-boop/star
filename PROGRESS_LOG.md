@@ -1,5 +1,79 @@
 # Star-Compose — Progress Log
 
+## 2026-05-07 — Accent + visibility sweep (`fix/accent-and-visibility-sweep`)
+
+**Branch:** `fix/accent-and-visibility-sweep` off `beta4`
+
+**Bugs reported by user (with screenshots, accent set to lime green via Appearance picker):**
+1. Magnifier in-game overlay: "100%" zoom percentage rendered black-on-dark; the three buttons (−, +, ✕) used a muted purple-gray that ignored the accent picker entirely.
+2. CPU pinning checkboxes (Container Settings & Shortcut Settings → Advanced) stayed purple instead of following the user's lime accent.
+3. Environment Variables row toggles (boolean envvars like MESA_SHADER_CACHE_DISABLE) rendered in default Android blue regardless of accent.
+4. Graphics Engine (FSR) overlay still had labels rendering as dark text on dark surface — first attempted on `fix/cpu-pin-and-graphics-engine-visibility` (which the user confirmed worked but was never merged); folded into this sweep.
+
+**Root causes:**
+- Anything reading `MaterialTheme.colorScheme.primary` follows the accent picker correctly. But Compose `FilledTonalButton` reads `secondaryContainer` / `onSecondaryContainer`, which `ThemePreset.toColorScheme()` was not setting — so M3 fell back to its built-in default purple-gray, ignoring the user's choice. Magnifier buttons are the only `FilledTonalButton` usage in the codebase.
+- Legacy XML widgets (`CPUListView`, `EnvVarsView`) inflate their CheckBox/ToggleButton from static `styles.xml` resources, which are baked at build time and never see the runtime `AppThemeState`. These widgets need to read the accent programmatically and apply it after inflation.
+- FSROverlay and MagnifierOverlay use `Modifier.background(...)` rather than a `Surface { ... }`, which means `LocalContentColor` is never set, so Text composables without an explicit `color = ...` fall back to `Color.Black` even though the surrounding `WinlatorTheme` defines `onSurface` as light gray.
+
+**Fixes:**
+- `ThemePreset.kt` — `toColorScheme()` and `toLightColorScheme()` now also set `secondary`, `onSecondary`, `secondaryContainer`, `onSecondaryContainer` derived from the accent. The smallest surface change that fixes Magnifier `FilledTonalButton`s without affecting any other unaudited M3 widgets (verified: zero other `FilledTonalButton`/`FilledCard`/etc. in tree).
+- `MagnifierOverlay.kt` — added `color = MaterialTheme.colorScheme.onSurface` to the "100%" Text.
+- `FSROverlay.kt` — re-applied the four `color = MaterialTheme.colorScheme.onSurface` fixes from the abandoned `fix/cpu-pin-and-graphics-engine-visibility` branch (confirmed working by user testing).
+- `AppThemeState.kt` — added `@JvmStatic fun getCurrentAccentArgb(): Int` so legacy Java widgets can read the current accent without doing Kotlin inline-class gymnastics from Java.
+- `CPUListView.java` — after inflating each CPU CheckBox, calls `CompoundButtonCompat.setButtonTintList(...)` with a `ColorStateList` built from `AppThemeState.getCurrentAccentArgb()`. Defensive fallback to `#FFBA86FC` if the singleton is somehow not yet initialised.
+- `EnvVarsView.java` — added `applyAccentTint(view)` helper that calls `setBackgroundTintList(...)` on legacy `ToggleButton` widgets in the boolean-envvar row. Wired into the existing `applyDarkTheme` path so the tint is applied alongside the dark-mode setup.
+
+**Why the sweep was bundled:**
+- The four root causes are entangled: Tier B (theme gap) is what makes Magnifier buttons pick up the accent; Tier C/D (legacy widget tinting) needs the same `getCurrentAccentArgb()` helper that has to be added to `AppThemeState`. Splitting would have required a private helper duplicated across two files.
+- One CI run, one device test, one merge.
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/theme/ThemePreset.kt`
+- `app/src/main/java/com/winlator/cmod/ui/theme/AppThemeState.kt`
+- `app/src/main/java/com/winlator/cmod/ui/overlays/FSROverlay.kt`
+- `app/src/main/java/com/winlator/cmod/ui/overlays/MagnifierOverlay.kt`
+- `app/src/main/java/com/winlator/cmod/widget/CPUListView.java`
+- `app/src/main/java/com/winlator/cmod/widget/EnvVarsView.java`
+
+**Pending follow-up:** The abandoned `fix/cpu-pin-and-graphics-engine-visibility` branch (commit `2b0a2a0`) should be deleted after this sweep merges, since its FSROverlay fix is replicated here and its bad XML hex tint was already reverted.
+
+---
+
+## 2026-05-07 — Shortcut Settings tab-switch state-loss fix (`fix/shortcut-envvars-tab-switch-loss`)
+
+**Branch:** `fix/shortcut-envvars-tab-switch-loss` off `beta4`
+
+**Bug reported by user:** Same tab-switch state-loss seen earlier in Container Settings was also reported in **Shortcut Settings** — editing a shortcut, adding an env var, switching tabs, then switching back: the var is gone.
+
+**Root cause:** Identical pattern to the Container Settings fix from earlier today. `ScEnvVarsTab` and `ScAdvancedTab` in `ShortcutsScreen.kt` host legacy Java widgets (`EnvVarsView`, `CPUListView`) via `AndroidView`. Source of truth lives inside the widget; parent `save()` reads it through a `MutableState<View?>` ref. Tab switch destroys the Composable + widget, taking unsaved input with it. Fallback (`shortcut.getExtra(...)`) returns the stored extra, which was never updated during editing.
+
+**Fix:**
+- `ScEnvVarsTab` already receives `shortcut` — added `DisposableEffect(Unit) { onDispose { ... } }` that flushes `envVarsViewRef.value?.envVars` into `shortcut.putExtra("envVars", ...)` before disposal. `Shortcut.putExtra` mutates only the in-memory JSONObject; disk persistence still happens later via `save() → saveData()` so Cancel still discards correctly.
+- `ScAdvancedTab` doesn't receive `shortcut` directly. Added an `onCpuListSnapshot: (String) -> Unit` parameter; the parent passes `{ shortcut.putExtra("cpuList", it) }`. DisposableEffect inside the tab calls the snapshot.
+- Added explicit `import androidx.compose.runtime.DisposableEffect` (file uses explicit imports).
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/screens/ShortcutsScreen.kt`
+
+---
+
+## 2026-05-07 — Container Settings tab-switch state-loss fix (`fix/envvars-tab-switch-loss`)
+
+**Branch:** `fix/envvars-tab-switch-loss` off `beta4`
+
+**Bug reported by user:** In Container Settings, after adding Environment Variables, switching to the Drives tab loses all the edits. They only persist if OK is clicked while still on the Env Vars tab.
+
+**Root cause:** `EnvVarsTab` and `AdvancedTab` (CPU pin lists) use legacy Java widgets (`EnvVarsView`, `CPUListView`) hosted via `AndroidView`. The widget's internal state is the source of truth, with the parent screen reading it on save through a `MutableState<View?>` ref. When the user leaves the tab, the Composable disposes, the AndroidView destroys the underlying Java widget, and the user's unsaved input dies with it. The save path's fallback (`viewModel.envVarsStr`) is stale because nothing ever writes to it during editing.
+
+**Fix:** Add a `DisposableEffect(Unit)` to both `EnvVarsTab` and `AdvancedTab` that, on dispose, reads the current widget value through the ref and writes it back to the corresponding `var` on `ContainerDetailViewModel` (`envVarsStr`, `cpuList`, `cpuListWoW64`). The `var ... by mutableStateOf(...)` setters cause the next composition to seed the widget from the latest value, so a round-trip Drives → Env Vars now shows the user's edits intact.
+
+**Files touched:**
+- `app/src/main/java/com/winlator/cmod/ui/screens/ContainerDetailScreen.kt` — added two `DisposableEffect` blocks (lines ~470, ~610)
+
+**Long-term:** Replace `EnvVarsView` and `CPUListView` legacy widgets with native Compose components that two-way-bind the ViewModel directly (same pattern as `DrivesTab` already uses). Tracked under `project_star_compose_ui_cleanup.md` Java/XML→Compose migration.
+
+---
+
 **Repo:** https://github.com/The412Banner/star-compose (main branch)  
 **Mirror:** https://github.com/kalteatz24/winlator-test (star-compose branch)  
 **Local:** `/data/data/com.termux/files/home/winlator-test`  
