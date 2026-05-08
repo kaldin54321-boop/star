@@ -166,9 +166,12 @@ fun ShortcutsScreen(vm: ShortcutsViewModel = viewModel()) {
     val importFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         if (pendingImportContainerIndex >= 0) {
-            vm.importShortcut(pendingImportContainerIndex, uri, context)
+            val result = vm.importShortcut(pendingImportContainerIndex, uri, context)
             pendingImportContainerIndex = -1
-            Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
+            when (result) {
+                is ImportResult.Success -> Toast.makeText(context, "Shortcut imported.", Toast.LENGTH_SHORT).show()
+                is ImportResult.Error -> Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+            }
         }
     }
 

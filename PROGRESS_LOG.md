@@ -1,5 +1,21 @@
 # Star-Compose — Progress Log
 
+## 2026-05-08 — Shortcut import EXE support + truthful toast (`fix/shortcut-import-exe-support`)
+
+**Branch:** `fix/shortcut-import-exe-support` off `beta4`
+
+**Bug reported by user:** Tapping the Import-shortcut icon in the Shortcuts screen, picking an `.exe` from Android's file picker, the toast says "Shortcut imported." but no shortcut appears.
+
+**Root cause (confirmed via logcat — silent failure, no app-side log lines, no crash):** `ShortcutsViewModel.importShortcut` was hardcoded to handle only already-exported `.desktop` shortcut files. For an `.exe` it (1) copied the binary into the container's Desktop dir, (2) read it as UTF-8 lines, (3) rewrote it as text — corrupting the binary, then (4) `runCatching {}` swallowed any error. `ContainerManager.loadShortcuts` only picks up `*.desktop` / `*.lnk`, so the corrupted exe was invisible. The success toast in `ShortcutsScreen.kt` fired unconditionally regardless of what `importShortcut` actually did.
+
+**Fixes:**
+- `ShortcutsViewModel.kt` — `importShortcut` now branches on extension and returns a sealed `ImportResult` (Success / Error(message)). For `.exe`, resolves the SAF URI to a real filesystem path (handles `com.android.externalstorage.documents` for primary storage and SD-card volumes), then writes a Winlator-format `.desktop` mirroring `StarLaunchBridge.writeShortcut` (Z:-prefixed Windows path, 4-backslash separators, no env WINEPREFIX in Exec, `StartupWMClass=explorer`, empty `[Extra Data]` block). For `.desktop` / `.lnk`, the original re-import flow is preserved. Other extensions return a clear error. All exceptions are now logged under `ShortcutsImport` tag instead of being swallowed.
+- `ShortcutsScreen.kt` — the importer launcher consumes the `ImportResult` and only toasts "Shortcut imported." on success; on error it shows the actual message (LENGTH_LONG so the user can read it).
+
+**Why no extension-specific copy?** A real Windows game needs its DLLs and assets next to the exe; copying just the binary into drive_c would break the game. Wine's default `Z:` drive maps to host `/`, so any exe under `/storage/emulated/0/...` is naturally reachable as `Z:\storage\emulated\0\...`. We point the shortcut at the in-place location instead of duplicating storage.
+
+**Phase 2 (deferred):** drive-mapping auto-add for cleaner paths (`D:` → game folder), working-directory detection (`Path=` field), EXE icon extraction (jacojayy added an 813-line `ExeIconExtractor.java` we could lift), pre-launch reachability check, bulk folder import.
+
 ## 2026-05-07 — Accent + visibility sweep (`fix/accent-and-visibility-sweep`)
 
 **Branch:** `fix/accent-and-visibility-sweep` off `beta4`

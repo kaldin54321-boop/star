@@ -4,9 +4,13 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ShortcutManager
 import android.net.Uri
+import android.os.Environment
+import android.provider.DocumentsContract
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
+import com.winlator.cmod.container.Container
 import com.winlator.cmod.container.ContainerManager
 import com.winlator.cmod.container.Shortcut
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,9 +18,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.Collections
 
 enum class ShortcutSortOrder { NAME_ASC, NAME_DESC, CONTAINER }
+
+sealed class ImportResult {
+    object Success : ImportResult()
+    data class Error(val message: String) : ImportResult()
+}
 
 class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -60,24 +70,116 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean("is_grid_view", grid).apply()
     }
 
-    fun importShortcut(containerIndex: Int, uri: Uri, context: Context) {
+    fun importShortcut(containerIndex: Int, uri: Uri, context: Context): ImportResult {
         val containers = manager.getContainers()
-        if (containerIndex >= containers.size) return
+        if (containerIndex < 0 || containerIndex >= containers.size) {
+            return ImportResult.Error("Invalid container.")
+        }
         val container = containers[containerIndex]
+
+        val sourceName = DocumentFile.fromSingleUri(context, uri)?.name
+            ?: return ImportResult.Error("Could not read picked file.")
+        val ext = sourceName.substringAfterLast('.', "").lowercase()
+
+        return when (ext) {
+            "exe" -> importExe(container, uri, sourceName, context)
+            "desktop", "lnk" -> importShortcutFile(container, uri, sourceName, ext, context)
+            else -> ImportResult.Error("Unsupported file type: .$ext (pick a .exe, .desktop, or .lnk).")
+        }
+    }
+
+    private fun importExe(container: Container, uri: Uri, sourceName: String, context: Context): ImportResult {
+        val realPath = resolveLocalPath(context, uri)
+            ?: return ImportResult.Error("EXE must be on local storage. Cloud / SAF locations aren't supported.")
+        if (!File(realPath).isFile) {
+            return ImportResult.Error("Could not access EXE on disk: $realPath")
+        }
+        val displayName = sourceName.substringBeforeLast('.', sourceName)
+        return try {
+            writeExeShortcut(container, realPath, displayName)
+            refresh()
+            ImportResult.Success
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to write EXE shortcut", e)
+            ImportResult.Error("Failed to write shortcut: ${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    private fun importShortcutFile(
+        container: Container,
+        uri: Uri,
+        sourceName: String,
+        ext: String,
+        context: Context,
+    ): ImportResult {
         val destDir = container.getDesktopDir()
         if (!destDir.exists()) destDir.mkdirs()
-        val fileName = DocumentFile.fromSingleUri(context, uri)?.name ?: "imported.desktop"
-        val dest = File(destDir, fileName)
-        runCatching {
+        val dest = File(destDir, sourceName)
+        return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(dest).use { output -> input.copyTo(output) }
+            } ?: return ImportResult.Error("Could not open picked file.")
+            if (ext == "desktop") {
+                val lines = dest.readLines().map { line ->
+                    if (line.startsWith("container_id:")) "container_id:${container.id}" else line
+                }
+                dest.writeText(lines.joinToString("\n") + "\n")
             }
-            val lines = dest.readLines().map { line ->
-                if (line.startsWith("container_id:")) "container_id:${container.id}" else line
-            }
-            dest.writeText(lines.joinToString("\n") + "\n")
+            refresh()
+            ImportResult.Success
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to import shortcut file", e)
+            ImportResult.Error("Failed to import: ${e.message ?: e.javaClass.simpleName}")
         }
-        refresh()
+    }
+
+    private fun writeExeShortcut(container: Container, exePath: String, displayName: String) {
+        val desktopDir = container.getDesktopDir()
+        if (!desktopDir.exists()) desktopDir.mkdirs()
+
+        val safeName = displayName.replace(Regex("""[\\/:*?"<>|]"""), "_").trim().ifEmpty { "game" }
+        val shortcutFile = File(desktopDir, "$safeName.desktop")
+
+        // Mirrors StarLaunchBridge.writeShortcut: Z:-prefixed, 4-backslash separators,
+        // no env WINEPREFIX (Winlator infers the container from the file's location).
+        val winPath = exePath.removePrefix("/").replace("/", "\\\\\\\\")
+        val content = buildString {
+            append("[Desktop Entry]\n")
+            append("Name=").append(displayName).append("\n")
+            append("Exec=wine Z:\\\\\\\\").append(winPath).append("\n")
+            append("Icon=").append(safeName).append("\n")
+            append("Type=Application\n")
+            append("StartupWMClass=explorer\n")
+            append("\n")
+            append("[Extra Data]\n")
+        }
+        shortcutFile.writeText(content)
+        Log.d(TAG, "Wrote EXE shortcut: ${shortcutFile.path} -> $exePath")
+    }
+
+    private fun resolveLocalPath(ctx: Context, uri: Uri): String? {
+        if (uri.scheme == "file") return uri.path
+        if (uri.scheme != "content") return null
+        return try {
+            if (!DocumentsContract.isDocumentUri(ctx, uri)) return null
+            val docId = DocumentsContract.getDocumentId(uri)
+            val split = docId.split(":", limit = 2)
+            val type = split[0]
+            val rel = if (split.size > 1) split[1] else ""
+            when (uri.authority) {
+                "com.android.externalstorage.documents" -> {
+                    if ("primary".equals(type, ignoreCase = true)) {
+                        "${Environment.getExternalStorageDirectory()}/$rel"
+                    } else {
+                        "/storage/$type/$rel"
+                    }
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "URI path resolution failed for $uri", e)
+            null
+        }
     }
 
     fun refresh() {
@@ -109,6 +211,8 @@ class ShortcutsViewModel(app: Application) : AndroidViewModel(app) {
     fun containers() = manager.getContainers()
 
     companion object {
+        private const val TAG = "ShortcutsImport"
+
         fun disableOnScreen(context: Context, shortcut: Shortcut) {
             try {
                 val sm = ContextCompat.getSystemService(context, ShortcutManager::class.java)
